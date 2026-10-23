@@ -154,3 +154,54 @@ def test_stdio_rejects_invalid_utf8_without_crashing(tmp_path):
                             input=b"\xff\n", capture_output=True, env=env, timeout=10)
     assert result.returncode == 0
     assert json.loads(result.stdout)["error"]["code"] == -32700
+
+
+def test_stdio_ignores_client_responses_blank_lines_and_unknown_params(tmp_path):
+    MemoryStore(tmp_path / "memory.db", vector_backend="python").close()
+    init = handshake()[0]
+    init["params"]["futureField"] = {"x": 1}
+    messages = [init, {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {"extra": True}},
+                '{"jsonrpc":"2.0","error":{"code":-1,"message":"no id"}}',
+                '{"jsonrpc":"2.0","id":null,"error":{"code":-1,"message":"null id"}}',
+                {"jsonrpc": "2.0", "id": 99, "result": {}}, "", "   ",
+                request("tools/list", {"futureField": 1}, 2), "{broken"]
+    replies = run_server(tmp_path, messages)
+    assert [reply["id"] for reply in replies] == [1, 2, None]
+    assert replies[1]["result"]["tools"]
+    assert replies[2]["error"]["code"] == -32700 and "id" in replies[2]
+
+
+@pytest.mark.parametrize("requested,expected", [("2025-11-25", "2025-11-25"), ("2025-06-18", "2025-06-18"),
+                                                ("2024-11-05", PROTOCOL_VERSION)])
+def test_stdio_echoes_supported_protocol_versions(tmp_path, requested, expected):
+    assert run_server(tmp_path, handshake(requested)[:1])[0]["result"]["protocolVersion"] == expected
+
+
+def test_stdio_read_only_server_reports_missing_database_and_bad_times(tmp_path):
+    replies = run_server(tmp_path, handshake() + [call("memory_status", request_id=2)])
+    assert replies[-1]["result"]["isError"] and "not found" in replies[-1]["result"]["content"][0]["text"]
+    assert not (tmp_path / "memory.db").exists()
+    MemoryStore(tmp_path / "memory.db", vector_backend="python").close()
+    replies = run_server(tmp_path, handshake() + [
+        call("memory_search", {"query": "x", "as_of": "0001-01-01T00:00:00+05:00"}, 2),
+        call("memory_history", {"memory_id": "x", "as_of": "2025-02-30"}, 3)])
+    assert [r["result"]["isError"] for r in replies[1:]] == [True, True]
+
+
+def test_stdio_message_limit_excludes_the_newline(tmp_path):
+    from personal_memory.stdio import MAX_MESSAGE_BYTES
+
+    head, tail = '{"jsonrpc":"2.0","id":9,"method":"ping","params":{"_meta":{"pad":"', '"}}}'
+    exact = head + "x" * (MAX_MESSAGE_BYTES - len(head) - len(tail)) + tail
+    replies = run_server(tmp_path, handshake() + [exact, exact[:-4] + 'xx"}}}'])
+    assert replies[1]["result"] == {}
+    assert replies[2]["error"]["code"] == -32600
+
+
+def test_write_tool_annotations_describe_append_only_semantics():
+    from personal_memory.stdio import tool_definitions
+
+    hints = {tool["name"]: tool["annotations"] for tool in tool_definitions(writes=True)}
+    assert hints["memory_search"]["readOnlyHint"] and not hints["memory_search"]["destructiveHint"]
+    assert not hints["memory_remember"]["readOnlyHint"] and not hints["memory_remember"]["destructiveHint"]
+    assert hints["memory_forget"]["destructiveHint"]

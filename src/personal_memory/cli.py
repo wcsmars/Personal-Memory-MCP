@@ -2,11 +2,14 @@
 
 import argparse
 import json
-import sqlite3
 import sys
 
 from .markdown import import_markdown
+from .stdio import STORE_ERRORS
 from .store import MemoryStore
+
+# Commands that only read open the database read-only, so a mistyped --db fails instead of creating a file.
+READ_ONLY_COMMANDS = {"search", "history", "export", "stats"}
 
 
 def demo(store: MemoryStore) -> dict:
@@ -22,7 +25,7 @@ def demo(store: MemoryStore) -> dict:
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description="Local point-in-time personal memory (UTC dates/times)")
+    result = argparse.ArgumentParser(prog="memory", description="Local point-in-time personal memory (UTC dates/times)")
     result.add_argument("--db", default="local/memory.db", help="SQLite path; default local/memory.db")
     result.add_argument("--vector-backend", choices=["auto", "python", "sqlite-vec"], default="auto")
     subs = result.add_subparsers(dest="command", required=True)
@@ -73,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     backend = args.pop("vector_backend")
     command = args.pop("command")
     try:
-        with MemoryStore(db, vector_backend=backend) as store:
+        with MemoryStore(db, vector_backend=backend, read_only=command in READ_ONLY_COMMANDS) as store:
             if command in {"init", "stats"}:
                 output = store.stats()
             elif command == "demo":
@@ -84,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                 output = getattr(store, command)(**args)
         print(json.dumps(output, indent=2, ensure_ascii=False, allow_nan=False))
         return 0
-    except (ValueError, KeyError, OSError, RuntimeError, sqlite3.Error) as exc:
+    except STORE_ERRORS as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         return 2
 

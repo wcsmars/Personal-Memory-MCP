@@ -1,22 +1,101 @@
 {
   "synthetic": true,
   "seed": 7,
-  "revisions": 679,
+  "revisions": 982,
   "identities": 400,
-  "queries": 300,
+  "queries": 299,
+  "past_period_queries": 42,
   "top_k": 5,
-  "candidate_limit": 20,
+  "corpus_span": [
+    "2024-01-01",
+    "2025-11-03"
+  ],
   "rates": {
-    "latest_only_future_leak": 0.7067,
-    "post_filter_rank_mismatch": 0.3733,
-    "post_filter_missing_results": 0.2,
-    "scoped_rank_mismatch": 0.0
+    "latest_only": {
+      "different_results": 0.9565,
+      "different_order": 0.9632,
+      "lost_results": 0.0,
+      "future_rows_returned": 0.5987
+    },
+    "global_top20": {
+      "different_results": 0.3946,
+      "different_order": 0.5017,
+      "lost_results": 0.301,
+      "future_rows_returned": 0.0
+    },
+    "global_top50": {
+      "different_results": 0.2007,
+      "different_order": 0.3478,
+      "lost_results": 0.0736,
+      "future_rows_returned": 0.0
+    },
+    "global_top100": {
+      "different_results": 0.1605,
+      "different_order": 0.3211,
+      "lost_results": 0.0301,
+      "future_rows_returned": 0.0
+    },
+    "global_topall": {
+      "different_results": 0.1304,
+      "different_order": 0.2943,
+      "lost_results": 0.0,
+      "future_rows_returned": 0.0
+    },
+    "known_by_cutoff": {
+      "different_results": 0.1003,
+      "different_order": 0.2542,
+      "lost_results": 0.0,
+      "future_rows_returned": 0.0
+    },
+    "this_store": {
+      "different_results": 0.0,
+      "different_order": 0.0,
+      "lost_results": 0.0,
+      "future_rows_returned": 0.0
+    }
   },
   "counts": {
-    "latest_only_future_leak": 212,
-    "post_filter_rank_mismatch": 112,
-    "post_filter_missing_results": 60,
-    "scoped_rank_mismatch": 0,
-    "queries_with_results": 300
+    "latest_only": {
+      "different_results": 286,
+      "different_order": 288,
+      "lost_results": 0,
+      "future_rows_returned": 179
+    },
+    "global_top20": {
+      "different_results": 118,
+      "different_order": 150,
+      "lost_results": 90,
+      "future_rows_returned": 0
+    },
+    "global_top50": {
+      "different_results": 60,
+      "different_order": 104,
+      "lost_results": 22,
+      "future_rows_returned": 0
+    },
+    "global_top100": {
+      "different_results": 48,
+      "different_order": 96,
+      "lost_results": 9,
+      "future_rows_returned": 0
+    },
+    "global_topall": {
+      "different_results": 39,
+      "different_order": 88,
+      "lost_results": 0,
+      "future_rows_returned": 0
+    },
+    "known_by_cutoff": {
+      "different_results": 30,
+      "different_order": 76,
+      "lost_results": 0,
+      "future_rows_returned": 0
+    },
+    "this_store": {
+      "different_results": 0,
+      "different_order": 0,
+      "lost_results": 0,
+      "future_rows_returned": 0
+    }
   }
 }

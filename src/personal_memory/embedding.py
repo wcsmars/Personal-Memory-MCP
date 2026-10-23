@@ -2,6 +2,7 @@
 
 import hashlib
 import math
+from operator import mul
 import re
 import struct
 
@@ -34,8 +35,9 @@ def unpack(blob: bytes) -> tuple[float, ...]:
 
 
 def cosine_distance(a: list[float], b: tuple[float, ...]) -> float:
-    aa = sum(x * x for x in a)
-    bb = sum(x * x for x in b)
+    # map(mul) adds the same products in the same order as a generator, only faster.
+    aa = sum(map(mul, a, a))
+    bb = sum(map(mul, b, b))
     if not aa or not bb:
         return 1.0
-    return max(0.0, min(2.0, 1 - sum(x * y for x, y in zip(a, b)) / math.sqrt(aa * bb)))
+    return max(0.0, min(2.0, 1 - sum(map(mul, a, b)) / math.sqrt(aa * bb)))

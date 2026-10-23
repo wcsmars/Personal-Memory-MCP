@@ -80,3 +80,11 @@ def test_reimport_with_reused_known_at_fails_atomically(tmp_path):
         assert store.stats()["revisions"] == 2
         later = import_markdown(store, notes, namespace="t", known_at="2025-01-02")
         assert later["written_revisions"] == 2 and later["unchanged_chunks"] == 1
+
+
+def test_demo_output_matches_saved_example(tmp_path, capsys):
+    from personal_memory.cli import main
+
+    assert main(["--db", str(tmp_path / "demo.db"), "--vector-backend", "python", "demo"]) == 0
+    saved = json.loads((Path(__file__).resolve().parents[1] / "examples" / "demo-output.json").read_text(encoding="utf-8"))
+    assert json.loads(capsys.readouterr().out) == saved

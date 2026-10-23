@@ -3,22 +3,37 @@
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import stat
+from collections import defaultdict
 from pathlib import Path
 
 from .store import MemoryStore, instant
 
 MAX_BYTES = 2_000_000
 CHUNK_CHARS = 1800
+TITLE_CHARS = 200
+_BLANK_LINE = re.compile(r"\n[ \t]*\n")
+_ATX_HEADING = re.compile(r" {0,3}#{1,6}(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*")
+_FENCE = re.compile(r" {0,3}(```|~~~)")
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def chunks(text: str) -> list[str]:
+    """Split at blank lines into chunks of at most CHUNK_CHARS, keeping paragraphs whole when possible.
+
+    A paragraph longer than CHUNK_CHARS is cut at the last whitespace in the window (or hard-cut if
+    there is none in its second half). Only whitespace is ever dropped.
+    """
     result: list[str] = []
     current = ""
-    for paragraph in text.split("\n\n"):
-        paragraph = paragraph.strip()
-        if not paragraph:
+    for paragraph in _BLANK_LINE.split(normalize_newlines(text)):
+        paragraph = paragraph.strip("\n").rstrip()
+        if not paragraph.strip():
             continue
         if current and len(current) + len(paragraph) + 2 > CHUNK_CHARS:
             result.append(current)
@@ -27,13 +42,35 @@ def chunks(text: str) -> list[str]:
             if current:
                 result.append(current)
                 current = ""
-            result.append(paragraph[:CHUNK_CHARS])
-            paragraph = paragraph[CHUNK_CHARS:]
+            window = paragraph[:CHUNK_CHARS]
+            cut = max(window.rfind(" "), window.rfind("\n"), window.rfind("\t"))
+            if cut < CHUNK_CHARS // 2:
+                cut = CHUNK_CHARS
+            piece = paragraph[:cut].rstrip()
+            if piece.strip():
+                result.append(piece)
+            paragraph = paragraph[cut:].lstrip()
         if paragraph:
             current += ("\n\n" if current else "") + paragraph
     if current:
         result.append(current)
     return result
+
+
+def heading(text: str, fallback: str) -> str:
+    """First non-empty ATX heading outside fenced code, else the fallback (file stem)."""
+    fence = None
+    for line in normalize_newlines(text).split("\n"):
+        marker = _FENCE.match(line)
+        if marker:
+            fence = None if fence == marker.group(1) else fence or marker.group(1)
+            continue
+        if fence:
+            continue
+        match = _ATX_HEADING.fullmatch(line)
+        if match and match.group(1) and match.group(1).strip():
+            return match.group(1).strip()[:TITLE_CHARS]
+    return fallback[:TITLE_CHARS]
 
 
 def import_markdown(store: MemoryStore, root: str | Path, *, namespace: str,
@@ -61,6 +98,12 @@ def import_markdown(store: MemoryStore, root: str | Path, *, namespace: str,
             "SELECT * FROM revisions WHERE namespace=? AND known_at<=? ORDER BY known_at DESC,id DESC",
             (namespace, known)):
         latest.setdefault(row["memory_id"], row)
+    # Live chunks of this collection grouped by file, so shrink detection is linear in the corpus.
+    live_chunks: dict[str, list[tuple[int, str, sqlite3.Row]]] = defaultdict(list)
+    for memory_id, row in latest.items():
+        source = json.loads(row["source_json"])
+        if not row["deleted"] and source.get("kind") == "markdown" and source.get("collection") == collection:
+            live_chunks[source.get("path")].append((source.get("chunk", -1), memory_id, row))
     planned: list[dict] = []
     files = 0
     skipped = 0
@@ -77,12 +120,15 @@ def import_markdown(store: MemoryStore, root: str | Path, *, namespace: str,
                 if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
                     raise ValueError(f"Markdown must be a regular file: {path.relative_to(base)}")
                 data = handle.read(MAX_BYTES + 1)
-            if len(data) > MAX_BYTES or b"\x00" in data:
-                raise ValueError(f"Invalid or oversized Markdown: {path.relative_to(base)}")
-            text = data.decode("utf-8")
             relative = path.relative_to(base).as_posix()
+            if len(data) > MAX_BYTES or b"\x00" in data:
+                raise ValueError(f"Invalid or oversized Markdown: {relative}")
+            try:
+                text = data.decode("utf-8").removeprefix("\ufeff")
+            except UnicodeDecodeError as exc:
+                raise ValueError(f"Markdown is not valid UTF-8: {relative} (byte {exc.start})") from exc
             files += 1
-            title = next((line.lstrip("# ").strip() for line in text.splitlines() if line.startswith("#")), path.stem)
+            title = heading(text, path.stem)
             parts = chunks(text)
             for index, content in enumerate(parts):
                 memory_id = "md:" + hashlib.sha256(f"{collection}\0{relative}\0{index}".encode()).hexdigest()[:32]
@@ -94,12 +140,11 @@ def import_markdown(store: MemoryStore, root: str | Path, *, namespace: str,
                     continue
                 planned.append(dict(namespace=namespace, memory_id=memory_id, content=content, title=title,
                                     known_at=known, valid_from=valid, source=source))
-            for memory_id, row in latest.items():
-                source = json.loads(row["source_json"])
-                if (not row["deleted"] and source.get("kind") == "markdown" and source.get("collection") == collection
-                        and source.get("path") == relative and source.get("chunk", -1) >= len(parts)):
+            for chunk, memory_id, row in live_chunks.get(relative, []):
+                if chunk >= len(parts):
                     planned.append(dict(namespace=namespace, memory_id=memory_id, content="", title=row["title"],
-                                        known_at=known, valid_from=valid, source=source, deleted=True))
+                                        known_at=known, valid_from=valid, source=json.loads(row["source_json"]),
+                                        deleted=True))
     # Validate in an isolated store before one atomic destination transaction.
     validated = []
     with MemoryStore(":memory:", vector_backend="python") as staging:

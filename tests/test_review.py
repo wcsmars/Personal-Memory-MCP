@@ -80,7 +80,7 @@ def test_import_validity_change_is_not_deduplicated(store, tmp_path):
 def test_import_parse_error_is_atomic(store, tmp_path):
     (tmp_path / "a.md").write_text("First valid note", encoding="utf-8")
     (tmp_path / "z.md").write_bytes(b"\xff\xfe")
-    with pytest.raises(UnicodeDecodeError):
+    with pytest.raises(ValueError, match="not valid UTF-8: z.md"):
         import_markdown(store, tmp_path, namespace="review", known_at="2025-01-01")
     assert store.stats()["revisions"] == 0
 
@@ -129,7 +129,12 @@ def test_equal_instants_normalized_before_identity_conflict(store):
 def test_cli_supports_documented_search_limit(tmp_path, capsys):
     from personal_memory.cli import main
 
-    code = main(["--db", str(tmp_path / "memory.db"), "--vector-backend", "python",
+    database = str(tmp_path / "memory.db")
+    assert main(["--db", database, "--vector-backend", "python", "search", "research",
+                 "--namespace", "review"]) == 2
+    assert "not found" in capsys.readouterr().err
+    assert main(["--db", database, "init"]) == 0
+    code = main(["--db", database, "--vector-backend", "python",
                  "search", "research", "--namespace", "review", "--limit", "100"])
     assert code == 0, capsys.readouterr().err
 
