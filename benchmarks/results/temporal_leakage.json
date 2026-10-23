@@ -42,8 +42,8 @@
       "future_rows_returned": 0.0
     },
     "known_by_cutoff": {
-      "different_results": 0.1003,
-      "different_order": 0.2542,
+      "different_results": 0.0936,
+      "different_order": 0.2475,
       "lost_results": 0.0,
       "future_rows_returned": 0.0
     },
@@ -86,8 +86,8 @@
       "future_rows_returned": 0
     },
     "known_by_cutoff": {
-      "different_results": 30,
-      "different_order": 76,
+      "different_results": 28,
+      "different_order": 74,
       "lost_results": 0,
       "future_rows_returned": 0
     },

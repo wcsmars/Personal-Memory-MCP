@@ -20,6 +20,9 @@ MAX_ID_CHARS = 500
 # float32 and Python in float64; equal scores can differ by ~1e-7 between them, so exact
 # comparison or a fixed rounding grid would let the two backends order ties differently.
 TIE_TOLERANCE = 1e-6
+# BM25 scores within this relative difference are ties. Platform maths libraries can differ
+# in the last bit of log(), which would otherwise reorder equal scores across machines.
+BM25_RELATIVE_TOLERANCE = 1e-9
 TIME_HELP = "Use YYYY-MM-DD (UTC midnight) or an ISO 8601 timestamp with a timezone, such as 2025-01-01T09:30:00Z"
 _DATE_ONLY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _HAS_TIME = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]")
@@ -27,15 +30,16 @@ _EXCESS_FRACTION = re.compile(r"[.,][0-9]{7,}")
 _FTS_TERM = re.compile(r"[^\W_]+", re.UNICODE)
 
 
-def _competition_ranks(pairs: list[tuple[int, float]], name, tolerance: float = 0.0) -> list[tuple[int, float, int]]:
+def _competition_ranks(pairs: list[tuple[int, float]], name, absolute: float = 0.0,
+                       relative: float = 0.0) -> list[tuple[int, float, int]]:
     """Rank ascending scores; tied rows share the best rank ("1224") and are listed by memory_id.
 
-    Values within ``tolerance`` of the previous value are ties, so float32 and float64
-    computations of the same score group identically.
+    A value within ``absolute + relative * magnitude`` of the previous value is a tie, so
+    float noise (float32 vs float64, or different maths libraries) cannot reorder equal scores.
     """
     keyed, group, previous = [], 0, None
     for row_id, score in sorted(pairs, key=lambda pair: pair[1]):
-        if previous is not None and score - previous > tolerance:
+        if previous is not None and score - previous > absolute + relative * max(abs(score), abs(previous)):
             group += 1
         previous = score
         keyed.append((group, name(row_id), row_id, score))
@@ -327,7 +331,7 @@ class MemoryStore:
         match = " OR ".join('"' + term.replace('"', '""') + '"' for term in terms)
         lexical = _competition_ranks([(r["rowid"], r["score"]) for r in self.connection.execute(
             "SELECT rowid,bm25(visible_fts,2.0,1.0) score FROM temp.visible_fts WHERE visible_fts MATCH ?",
-            (match,))], name)[:candidate_limit]
+            (match,))], name, relative=BM25_RELATIVE_TOLERANCE)[:candidate_limit]
         # Both backends score the same float32 query vector over only the visible rows.
         query_blob = pack(embed(query))
         if self.vector_backend == "sqlite-vec":
@@ -340,7 +344,7 @@ class MemoryStore:
             query_vector = list(unpack(query_blob))
             distances = [(r["id"], cosine_distance(query_vector, unpack(r["embedding"]))) for r in rows]
         vectors = _competition_ranks([(i, d) for i, d in distances if d < 1.0 - TIE_TOLERANCE],
-                                     name, TIE_TOLERANCE)[:candidate_limit]
+                                     name, absolute=TIE_TOLERANCE)[:candidate_limit]
         scores: dict[int, dict] = {}
         for method, rankings in [("fts5", lexical), ("vector", vectors)]:
             for row_id, raw_score, rank in rankings:

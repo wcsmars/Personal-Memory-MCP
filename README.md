@@ -24,10 +24,10 @@ Ground truth is computed independently of the store: a brute-force Python implem
 | One global index, top 20 matches, then filter | **39.5%** | 30.1% lose results entirely: invisible rows fill the candidate list |
 | Same, top 50 / top 100 matches | 20.1% / 16.1% | 7.4% / 3.0% lose results |
 | Same, every match kept, then filter | 13.0% | No truncation: BM25 statistics still count invisible rows |
-| Index of rows known by the cutoff, then filter | 10.0% | No future rows, but superseded and deleted versions still distort BM25 |
+| Index of rows known by the cutoff, then filter | 9.4% | No future rows, but superseded and deleted versions still distort BM25 |
 | **This store**: resolve visibility, then index and rank | **0.0%** | Same memories, same order and identical BM25 scores on every query |
 
-Future rows are not the only problem. Even with no future rows indexed, superseded and deleted versions shift corpus statistics enough to change one query in ten.
+Future rows are not the only problem. Even with no future rows indexed, superseded and deleted versions shift corpus statistics enough to change almost one query in ten.
 
 ```bash
 PYTHONPATH=src python3.11 benchmarks/temporal_leakage.py
@@ -93,7 +93,7 @@ All times are normalized to UTC with microsecond precision. Accepted forms are `
 3. Score the same rows by cosine similarity, using sqlite-vec `vec_distance_cosine` when installed, otherwise Python.
 4. Rank each component with tied scores sharing a rank, fuse with `sum(1 / (60 + rank))`, order by fused score then memory ID, and return each result with component ranks, raw scores, provenance and content hash.
 
-sqlite-vec computes in 32-bit floats and Python in 64-bit, so equal cosine scores can differ by about 1e-7 between them. Distances within 1e-6 of each other are therefore treated as ties. With that rule, the two backends returned identical rankings on 10,000 randomized searches; a test checks this on every run.
+sqlite-vec computes in 32-bit floats and Python in 64-bit, so equal cosine scores can differ by about 1e-7 between them. Distances within 1e-6 of each other are therefore treated as ties, and BM25 scores within a relative 1e-9 likewise, because operating-system maths libraries can differ in the last bit. With that rule, the two backends returned identical rankings on 10,000 randomized searches; a test checks this on every run.
 
 The built-in embedding is a deterministic, signed 256-dimensional hash of words and adjacent word pairs. It is a reproducible **lexical baseline**, not a semantic embedding model, and works offline. The database records the embedding version and refuses to open with a different one. Vector search is an exact scan over visible rows, not an approximate index, which suits personal-scale collections rather than millions of rows.
 

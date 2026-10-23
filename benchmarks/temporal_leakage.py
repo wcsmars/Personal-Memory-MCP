@@ -94,10 +94,21 @@ def index(db: sqlite3.Connection, table: str, rows: list[dict]) -> None:
 
 
 def search(db: sqlite3.Connection, table: str, names: dict[int, str], query: str) -> list[tuple[float, str, int]]:
-    """(score, memory_id, row id) for every match in ``table``, best first."""
+    """(score, memory_id, row id) for every match in ``table``, best first.
+
+    Scores within a relative 1e-9 of each other are ties ordered by memory id, so last-bit
+    differences between platform maths libraries cannot change the comparison.
+    """
     match = " OR ".join(f'"{term}"' for term in dict.fromkeys(query.split()))
-    return sorted((score, names[rowid], rowid) for rowid, score in db.execute(
+    scored = sorted((score, names[rowid], rowid) for rowid, score in db.execute(
         f"SELECT rowid,bm25({table},2.0,1.0) FROM temp.{table} WHERE {table} MATCH ?", (match,)))
+    keyed, group, previous = [], 0, None
+    for score, name, rowid in scored:
+        if previous is not None and score - previous > 1e-9 * max(abs(score), abs(previous)):
+            group += 1
+        previous = score
+        keyed.append((group, name, rowid, score))
+    return [(score, name, rowid) for _, name, rowid, score in sorted(keyed)]
 
 
 def bm25(db: sqlite3.Connection, rows: list[dict], query: str) -> list[tuple[float, str, int]]:
@@ -170,7 +181,8 @@ def run(seed: int = 7, identities: int = 400, queries: int = 300, top_k: int = 5
             truth_scores = {name: score for score, name, _ in truth_ranked}
             wrong = (result["eligible_count"] != len(visible)
                      or any(r["id"] not in visible_ids for r in result["results"])
-                     or any(abs(r["retrieval"]["fts5"]["raw_score"] - truth_scores[r["memory_id"]]) > 1e-12
+                     or any(abs(r["retrieval"]["fts5"]["raw_score"] - truth_scores[r["memory_id"]])
+                            > 1e-9 * abs(truth_scores[r["memory_id"]])
                             for r in lexical))
             counts["this_store"]["different_results"] += wrong
     rates = {k: {m: round(v / evaluated, 4) for m, v in c.items()} for k, c in counts.items()}

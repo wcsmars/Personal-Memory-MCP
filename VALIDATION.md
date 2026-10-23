@@ -29,4 +29,6 @@ Additional checks run once for this release (not part of the suite):
 - Re-importing 2,000 unchanged files: 0.11 s; time grows linearly.
 - A fresh clone from GitHub, installed into a new virtual environment, passes the suite; the built wheel installs and both entry points start.
 
+Cross-platform check: the first Linux CI run produced slightly different counts (74 vs 76) for one benchmark baseline, because the Linux and macOS maths libraries differ in the last bit of `log()` and so broke some exact BM25 ties differently. BM25 scores within a relative 1e-9 are now treated as ties in both the store and the benchmark; with that rule macOS reproduces the Linux counts, and the saved output is platform-independent.
+
 GitHub Actions installs all extras and runs the suite on Python 3.11 and 3.12 on every push.
