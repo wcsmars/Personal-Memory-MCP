@@ -1,0 +1,87 @@
+{
+  "synthetic": true,
+  "before": {
+    "namespace": "demo",
+    "as_of": "2025-02-01T00:00:00.000000Z",
+    "valid_at": "2025-02-01T00:00:00.000000Z",
+    "eligible_count": 1,
+    "vector_backend": "python",
+    "embedding_id": "blake2b-word-bigram-256-v1",
+    "results": [
+      {
+        "id": 1,
+        "memory_id": "preferred-role",
+        "namespace": "demo",
+        "title": "Career preference",
+        "content": "Fictional Alex prefers equity research roles.",
+        "content_hash": "6c122ccf61330e7dd70580022f86aaa8e05eb9857d4605183d92d7671a0742f9",
+        "known_at": "2025-01-10T00:00:00.000000Z",
+        "valid_from": "2025-01-10T00:00:00.000000Z",
+        "valid_to": null,
+        "deleted": false,
+        "source": {
+          "kind": "synthetic",
+          "scenario": "initial preference"
+        },
+        "score": 0.03278688524590164,
+        "retrieval": {
+          "fts5": {
+            "rank": 1,
+            "raw_score": -2.75e-06
+          },
+          "vector": {
+            "rank": 1,
+            "raw_score": 0.7690598923241497
+          }
+        }
+      }
+    ]
+  },
+  "after": {
+    "namespace": "demo",
+    "as_of": "2025-04-01T00:00:00.000000Z",
+    "valid_at": "2025-04-01T00:00:00.000000Z",
+    "eligible_count": 1,
+    "vector_backend": "python",
+    "embedding_id": "blake2b-word-bigram-256-v1",
+    "results": [
+      {
+        "id": 2,
+        "memory_id": "preferred-role",
+        "namespace": "demo",
+        "title": "Career preference",
+        "content": "Fictional Alex now prefers quantitative trading roles.",
+        "content_hash": "831043c6fb9a8e9aefe069c7e73d4b47c0413e54bf8bf788d3d6f9875be70f86",
+        "known_at": "2025-03-10T00:00:00.000000Z",
+        "valid_from": "2025-03-10T00:00:00.000000Z",
+        "valid_to": null,
+        "deleted": false,
+        "source": {
+          "kind": "synthetic",
+          "scenario": "changed preference"
+        },
+        "score": 0.03278688524590164,
+        "retrieval": {
+          "fts5": {
+            "rank": 1,
+            "raw_score": -2.75e-06
+          },
+          "vector": {
+            "rank": 1,
+            "raw_score": 0.7690598923241497
+          }
+        }
+      }
+    ]
+  },
+  "stats": {
+    "schema_version": 1,
+    "revisions": 2,
+    "vector_backend": "python",
+    "vector_note": "Explicit Python cosine baseline",
+    "embedding_id": "blake2b-word-bigram-256-v1",
+    "namespaces": [
+      "demo"
+    ]
+  }
+}

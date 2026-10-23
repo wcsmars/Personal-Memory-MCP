@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "personal-memory": {
+      "command": "/ABSOLUTE/PATH/Personal Memory MCP/.venv/bin/python",
+      "args": ["-m", "personal_memory.server"],
+      "env": {
+        "PYTHONPATH": "/ABSOLUTE/PATH/Personal Memory MCP/src",
+        "MEMORY_DB": "/ABSOLUTE/PATH/Personal Memory MCP/local/memory.db",
+        "MEMORY_NAMESPACE": "personal",
+        "MEMORY_VECTOR_BACKEND": "auto",
+        "MEMORY_ENABLE_WRITES": "false"
+      }
+    }
+  }
+}

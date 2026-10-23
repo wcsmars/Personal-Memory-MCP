@@ -1,0 +1,47 @@
+# Local configuration and credentials
+config.yaml
+*.yaml
+*.yml
+!config.example.yaml
+!.github/workflows/*.yml
+.env
+.env.*
+*.key
+*.pem
+*.p12
+credentials/
+private/
+data/raw/
+
+# Browser sessions and generated records
+.chrome-profile/
+*profile*/
+logs/
+screenshots/
+state/
+network-*.jsonl
+*.log
+*.sqlite*
+*.db
+*.har
+
+# Python and build output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local tools and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local memory databases and exports
+local/

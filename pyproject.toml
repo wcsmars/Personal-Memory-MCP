@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-memory-mcp"
+version = "0.2.0"
+description = "A local, point-in-time memory store with FTS5 and optional sqlite-vec/MCP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Chung Shing Mars Wong" }]
+keywords = ["mcp", "memory", "sqlite", "fts5", "bitemporal", "point-in-time"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/wcsmars/Personal-Memory-MCP"
+
+[project.optional-dependencies]
+vectors = ["sqlite-vec>=0.1.6,<0.2"]
+mcp = ["mcp>=2,<3"]
+dev = ["pytest>=8,<9"]
+all = ["sqlite-vec>=0.1.6,<0.2", "mcp>=2,<3", "pytest>=8,<9"]
+
+[project.scripts]
+memory = "personal_memory.cli:main"
+memory-mcp = "personal_memory.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "seed": 7,
+  "revisions": 679,
+  "identities": 400,
+  "queries": 300,
+  "top_k": 5,
+  "candidate_limit": 20,
+  "rates": {
+    "latest_only_future_leak": 0.7067,
+    "post_filter_rank_mismatch": 0.3733,
+    "post_filter_missing_results": 0.2,
+    "scoped_rank_mismatch": 0.0
+  },
+  "counts": {
+    "latest_only_future_leak": 212,
+    "post_filter_rank_mismatch": 112,
+    "post_filter_missing_results": 60,
+    "scoped_rank_mismatch": 0,
+    "queries_with_results": 300
+  }
+}
